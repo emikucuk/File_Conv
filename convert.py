@@ -9,7 +9,7 @@ from tkinter import messagebox, ttk
 
 from PIL import Image
 
-SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".avif"}
 OUTPUT_FOLDER_NAME = "converted"
 
 # (key, display label, output suffix)
@@ -17,15 +17,22 @@ FORMAT_CHOICES: list[tuple[str, str, str]] = [
     ("png", "PNG", ".png"),
     ("jpeg", "JPEG", ".jpg"),
     ("webp", "WebP", ".webp"),
+    ("avif", "AVIF", ".avif"),
 ]
 FORMAT_LABELS = [label for _, label, _ in FORMAT_CHOICES]
-# key -> (suffix, pillow_format)
+# key -> (suffix, format id used by convert_file)
 TARGETS: dict[str, tuple[str, str]] = {
     "png": (".png", "PNG"),
     "jpeg": (".jpg", "JPEG"),
     "webp": (".webp", "WEBP"),
+    "avif": (".avif", "AVIF"),
 }
 PLACEHOLDER = "Seçin..."
+LOSSY_QUALITIES = {
+    "JPEG": (82, 76, 70, 64, 58),
+    "WEBP": (78, 72, 66, 60, 54),
+    "AVIF": (70, 64, 58, 52, 46),
+}
 
 
 def unique_path(directory: Path, name: str) -> Path:
@@ -60,8 +67,14 @@ def collect_files(args: list[str]) -> tuple[list[Path], int]:
     return files, skipped
 
 
-def prepare_image(image: Image.Image, pillow_format: str) -> Image.Image:
-    if pillow_format == "JPEG":
+def load_image(source: Path) -> Image.Image:
+    with Image.open(source) as image:
+        image.load()
+        return image.copy()
+
+
+def prepare_image(image: Image.Image, target_format: str) -> Image.Image:
+    if target_format == "JPEG":
         if image.mode in ("RGBA", "LA") or (
             image.mode == "P" and "transparency" in image.info
         ):
@@ -76,47 +89,50 @@ def prepare_image(image: Image.Image, pillow_format: str) -> Image.Image:
     return image
 
 
-def convert_file(source: Path, destination: Path, pillow_format: str) -> None:
+def convert_file(source: Path, destination: Path, target_format: str) -> None:
     """Save with size-biased settings. Lossy targets step quality down if still larger."""
     original_size = source.stat().st_size
+    image = load_image(source)
+    prepared = prepare_image(image, target_format)
 
-    with Image.open(source) as image:
-        image.load()
-        prepared = prepare_image(image, pillow_format)
+    if target_format == "PNG":
+        prepared.save(
+            destination,
+            format="PNG",
+            optimize=True,
+            compress_level=9,
+        )
+        return
 
-        if pillow_format == "PNG":
-            # Lossless: max zlib compression (JPEG/WebP → PNG often still grows)
+    qualities = LOSSY_QUALITIES[target_format]
+    for quality in qualities:
+        if target_format == "JPEG":
             prepared.save(
                 destination,
-                format="PNG",
+                format="JPEG",
+                quality=quality,
                 optimize=True,
-                compress_level=9,
+                progressive=True,
             )
-            return
-
-        qualities = (82, 76, 70, 64, 58) if pillow_format == "JPEG" else (78, 72, 66, 60, 54)
-        for quality in qualities:
-            if pillow_format == "JPEG":
-                prepared.save(
-                    destination,
-                    format="JPEG",
-                    quality=quality,
-                    optimize=True,
-                    progressive=True,
-                )
-            else:
-                prepared.save(
-                    destination,
-                    format="WEBP",
-                    quality=quality,
-                    method=6,
-                )
-            if destination.stat().st_size <= original_size:
-                break
+        elif target_format == "WEBP":
+            prepared.save(
+                destination,
+                format="WEBP",
+                quality=quality,
+                method=6,
+            )
+        else:  # AVIF
+            prepared.save(
+                destination,
+                format="AVIF",
+                quality=quality,
+            )
+        if destination.stat().st_size <= original_size:
+            break
 
 
 def label_to_target(label: str) -> tuple[str, str] | None:
-    """Return (suffix, pillow_format) or None if placeholder / invalid."""
+    """Return (suffix, target_format) or None if placeholder / invalid."""
     if not label or label == PLACEHOLDER:
         return None
     for key, lab, suffix in FORMAT_CHOICES:
@@ -264,20 +280,20 @@ class ConvertApp(tk.Tk):
         self.ok_btn.configure(state=state)
 
     def _targets_for_files(self) -> list[tuple[Path, str, str]]:
-        """List of (source, out_suffix, pillow_format)."""
+        """List of (source, out_suffix, target_format)."""
         result: list[tuple[Path, str, str]] = []
         if self.same_format_var.get():
             target = label_to_target(self.global_format_var.get())
             assert target is not None
-            suffix, pillow = target
+            suffix, fmt = target
             for path in self.files:
-                result.append((path, suffix, pillow))
+                result.append((path, suffix, fmt))
         else:
             for path, var in zip(self.files, self.row_vars):
                 target = label_to_target(var.get())
                 assert target is not None
-                suffix, pillow = target
-                result.append((path, suffix, pillow))
+                suffix, fmt = target
+                result.append((path, suffix, fmt))
         return result
 
     def _on_ok(self) -> None:
@@ -303,7 +319,7 @@ class ConvertApp(tk.Tk):
         bytes_in = 0
         bytes_out = 0
 
-        for index, (source, suffix, pillow) in enumerate(jobs, start=1):
+        for index, (source, suffix, fmt) in enumerate(jobs, start=1):
             self.status_var.set(f"İşleniyor {index}/{total}: {source.name}")
             self.update_idletasks()
             out_dir = source.parent / OUTPUT_FOLDER_NAME
@@ -312,7 +328,7 @@ class ConvertApp(tk.Tk):
                 out_dir.mkdir(parents=True, exist_ok=True)
                 destination = unique_path(out_dir, out_name)
                 src_size = source.stat().st_size
-                convert_file(source, destination, pillow)
+                convert_file(source, destination, fmt)
                 dst_size = destination.stat().st_size
                 bytes_in += src_size
                 bytes_out += dst_size
@@ -379,7 +395,8 @@ def main() -> int:
         root.withdraw()
         messagebox.showerror(
             "Formata dönüştür",
-            "İşlenecek geçerli görsel bulunamadı.\nDesteklenen: PNG, JPEG, WebP",
+            "İşlenecek geçerli görsel bulunamadı.\n"
+            "Desteklenen: PNG, JPEG, WebP, AVIF",
         )
         root.destroy()
         return 1

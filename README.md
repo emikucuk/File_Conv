@@ -1,6 +1,6 @@
 # Görsel Format Dönüştürücü (Windows Sağ Tık)
 
-Explorer'da seçili görselleri yerel olarak [Pillow](https://pillow.readthedocs.io/) ile PNG / JPEG / WebP arasında dönüştürür ve aynı dizindeki `converted` klasörüne yazar.
+Explorer'da seçili görselleri yerel olarak [Pillow](https://pillow.readthedocs.io/) ile dönüştürür; çıktıyı aynı dizindeki `converted` klasörüne yazar.
 
 TinyPNG sıkıştırma aracından (`tiny_func`) bağımsızdır; menü ve kurulum ayrıdır.
 
@@ -10,8 +10,8 @@ TinyPNG sıkıştırma aracından (`tiny_func`) bağımsızdır; menü ve kurulu
 - Sağ tık menüsü: **Formata dönüştür** → seçim penceresi
 - Üstte **Hepsini aynı formata çevir** (tek format) veya dosya başına ayrı format
 - Format seçilmeden **Tamam** kullanılamaz
-- Çift yönlü: `.png` ↔ `.jpg`/`.jpeg` ↔ `.webp`
-- Aynı formata da yazar (ör. PNG → PNG yeniden kaydedilir)
+- Desteklenen: `.png`, `.jpg`/`.jpeg`, `.webp`, `.avif`
+- Aynı formata da yazar
 - Çıktı: `<görselin-dizini>/converted/` (klasör varsa yeniden kullanılır)
 - İsim çakışmasında `photo.png` → `photo_1.png` → `photo_2.png` …
 - Tek dosya hatasında işlem diğer dosyalar için devam eder
@@ -39,11 +39,11 @@ pip install -r requirements.txt
 powershell -ExecutionPolicy Bypass -File .\install_context_menu.ps1
 ```
 
-3. Explorer'ı yenileyin (görev çubuğundan Windows Explorer'ı yeniden başlatın veya bir kez oturumu kapatıp açın).
+3. Explorer'ı yenileyin (görev yöneticisinden Windows Explorer'ı yeniden başlatın veya bir kez oturumu kapatıp açın).
 
 ## Kullanım
 
-1. Explorer'da bir veya daha fazla `.png` / `.jpg` / `.jpeg` / `.webp` seçin.
+1. Explorer'da bir veya daha fazla desteklenen görsel seçin.
 2. Sağ tık → **Formata dönüştür**.
 3. Açılan pencerede:
    - **Hepsini aynı formata çevir** işaretliyse üstten tek format seçin.
@@ -68,6 +68,6 @@ Yalnızca bu aracın menü kaydını siler; TinyPNG menüsüne dokunmaz.
 
 - Registry kayıtları yalnızca mevcut kullanıcıya (`HKCU`) yazılır.
 - Proje klasöründe `.venv` varsa `convert.bat` `pythonw` ile konsolsuz pencere açar.
-- JPEG çıktıda şeffaflık beyaz zemine düzleştirilir; PNG ve WebP şeffaflığı korur.
-- JPEG/WebP yazarken kalite, mümkünse kaynak boyuttan küçük olacak şekilde ayarlanır.
-- PNG kayıpsızdır; özellikle JPEG/WebP → PNG dönüşümünde dosya büyüyebilir (format gereği).
+- JPEG çıktıda şeffaflık beyaz zemine düzleştirilir; PNG / WebP / AVIF şeffaflığı korur.
+- JPEG / WebP / AVIF yazarken kalite, mümkünse kaynak boyuttan küçük olacak şekilde ayarlanır.
+- PNG kayıpsızdır; özellikle JPEG/WebP → PNG dönüşümünde dosya büyüyebilir.

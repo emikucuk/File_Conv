@@ -19,7 +19,7 @@ function T([int[]]$codes) {
 
 # Formata dönüştür
 $menuLabel = "Formata d" + (T 0x00F6) + "n" + (T 0x00FC,0x015F) + "t" + (T 0x00FC) + "r"
-$extensions = @(".png", ".jpg", ".jpeg", ".webp")
+$extensions = @(".png", ".jpg", ".jpeg", ".webp", ".avif")
 $verbName = "ImageFormatConvert"
 $command = "`"$batPath`" `"%1`""
 

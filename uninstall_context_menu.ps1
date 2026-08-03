@@ -6,7 +6,7 @@
 #>
 $ErrorActionPreference = "Stop"
 
-$extensions = @(".png", ".jpg", ".jpeg", ".webp")
+$extensions = @(".png", ".jpg", ".jpeg", ".webp", ".avif")
 $verbName = "ImageFormatConvert"
 $storeNames = @("fileconv.ToPng", "fileconv.ToJpeg", "fileconv.ToWebp")
 $storeRoot = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell"
